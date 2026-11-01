@@ -1,0 +1,30 @@
+# Arma la versión publicada de pdf.pro cuando llega un instalador nuevo a subir/.
+# El instalador viene partido en pedazos (GitHub no acepta archivos de más de 100 MB en git);
+# acá se vuelve a juntar y se publica con latest.yml, que es lo que lee el programa para actualizarse.
+name: Publicar versión
+on:
+  push:
+    paths: ['subir/version.txt']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Juntar el instalador y publicar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(tr -d '[:space:]' < subir/version.txt)
+          exe="PDF.Pro-Setup-$v.exe"
+          cat subir/instalador.part* > "$exe"
+          echo "Tamaño: $(stat -c %s "$exe")"
+          grep -q "size: $(stat -c %s "$exe")" subir/latest.yml || { echo "El tamaño no coincide con latest.yml"; exit 1; }
+          gh release delete "v$v" --yes --cleanup-tag 2>/dev/null || true
+          # copia con nombre fijo: el botón Compartir del programa manda .../releases/latest/download/PDF.Pro-Instalar.exe
+          cp "$exe" PDF.Pro-Instalar.exe
+          gh release create "v$v" "$exe" "subir/$exe.blockmap" subir/latest.yml PDF.Pro-Instalar.exe --title "pdf.pro $v" --notes-file subir/notas.md --latest
+          # se guardan solo las últimas 3 versiones publicadas
+          gh release list --limit 100 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[3:] | .[].tagName' | while read t; do gh release delete "$t" --yes --cleanup-tag; done
