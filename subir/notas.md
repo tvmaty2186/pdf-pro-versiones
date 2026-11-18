@@ -1,0 +1,1 @@
+Menú de imprimir completo: orientación, márgenes, escala, varias páginas por hoja, calidad, pie de página, orden inverso y vista previa igual a lo impreso. Arreglo de la vista previa cortada y de la hoja horizontal.
